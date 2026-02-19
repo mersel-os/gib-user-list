@@ -5,6 +5,7 @@
   </ItemGroup>
 
   <PropertyGroup>
+    <TargetFramework />
     <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
     <RootNamespace>MERSEL.Services.GibUserList.Client</RootNamespace>
     <AssemblyName>MERSEL.Services.GibUserList.Client</AssemblyName>
