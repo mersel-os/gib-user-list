@@ -1,5 +1,12 @@
 # MERSEL.Services.GibUserList
 
+[![CI](https://github.com/mersel-os/gib-user-list/actions/workflows/ci.yml/badge.svg)](https://github.com/mersel-os/gib-user-list/actions/workflows/ci.yml)
+[![NuGet](https://img.shields.io/nuget/v/MERSEL.Services.GibUserList.Client?logo=nuget&label=NuGet)](https://www.nuget.org/packages/MERSEL.Services.GibUserList.Client)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/MERSEL.Services.GibUserList.Client?logo=nuget&label=Downloads)](https://www.nuget.org/packages/MERSEL.Services.GibUserList.Client)
+[![Docker API](https://img.shields.io/badge/GHCR-gibuserlist--api-blue?logo=docker)](https://ghcr.io/mersel-os/gibuserlist-api)
+[![Docker Worker](https://img.shields.io/badge/GHCR-gibuserlist--worker-blue?logo=docker)](https://ghcr.io/mersel-os/gibuserlist-worker)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 GIB (Gelir İdaresi Başkanlığı) e-Fatura ve e-İrsaliye mükellef listelerini senkronize eden ve sorgulatan **açık kaynak** .NET micro servisi.
 
 ---
