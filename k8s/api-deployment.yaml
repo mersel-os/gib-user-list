@@ -1,0 +1,163 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gib-gibuser-api
+  labels:
+    app: gib-gibuser-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gib-gibuser-api
+  template:
+    metadata:
+      labels:
+        app: gib-gibuser-api
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: api
+          image: ghcr.io/mersel-os/gib-gibuser-api:latest
+          ports:
+            - containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: TZ
+              valueFrom:
+                configMapKeyRef:
+                  name: gib-gibuser-config
+                  key: timezone
+            - name: ConnectionStrings__DefaultConnection
+              valueFrom:
+                secretKeyRef:
+                  name: gib-gibuser-secrets
+                  key: db-connection-string
+            - name: Caching__Provider
+              value: "Memory"
+            - name: Authentication__Enabled
+              value: "true"
+            - name: Authentication__Clients__0__Name
+              value: "etransformation-api"
+            - name: Authentication__Clients__0__AccessKey
+              valueFrom:
+                secretKeyRef:
+                  name: gib-gibuser-secrets
+                  key: hmac-access-key
+            - name: Authentication__Clients__0__SecretKey
+              valueFrom:
+                secretKeyRef:
+                  name: gib-gibuser-secrets
+                  key: hmac-secret-key
+            - name: ArchiveStorage__BasePath
+              value: "/data/gib-archives"
+          volumeMounts:
+            - name: gib-archives
+              mountPath: /data/gib-archives
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            failureThreshold: 10
+            periodSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 0
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 0
+            periodSeconds: 10
+      volumes:
+        - name: gib-archives
+          persistentVolumeClaim:
+            claimName: gib-gibuser-archives-pvc
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gib-gibuser-config
+data:
+  timezone: "Europe/Istanbul"
+  gib-pk-list-url: "https://merkez.gib.gov.tr/EFaturaMerkez/newUserPkListxml.zip"
+  gib-gb-list-url: "https://merkez.gib.gov.tr/EFaturaMerkez/newUserGbListxml.zip"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gib-gibuser-archives-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gib-gibuser-api
+spec:
+  selector:
+    app: gib-gibuser-api
+  ports:
+    - port: 80
+      targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: gib-gibuser-api-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: gib-gibuser-api
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: gib-gibuser-api-pdb
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: gib-gibuser-api

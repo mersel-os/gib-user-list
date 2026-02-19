@@ -1,0 +1,140 @@
+# ─────────────────────────────────────────────────────────────────────
+# MERSEL GibUserList — Monitoring Stack
+#
+# Kullanım:
+#   cd monitoring
+#   docker compose up -d --build
+#
+# Erişim Adresleri:
+#   GibUserList API : http://localhost:8080
+#   Scalar Docs     : http://localhost:8080/scalar/v1
+#   Prometheus      : http://localhost:9090
+#   Grafana         : http://localhost:3000  (admin / $GRAFANA_ADMIN_PASSWORD)
+# ─────────────────────────────────────────────────────────────────────
+
+services:
+  # ── PostgreSQL ─────────────────────────────────────────────────────
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-gib_user_list}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    ports:
+      - "5435:5432"
+    volumes:
+      - pgdata-gib-gibuser:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── GibUserList API ────────────────────────────────────────────────
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    ports:
+      - "8080:8080"
+    environment:
+      - TZ=Europe/Istanbul
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB:-gib_user_list};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD}
+      - Caching__Provider=Memory
+      - Authentication__Enabled=false
+      - ArchiveStorage__BasePath=/data/gib-archives
+    volumes:
+      - gib-archives:/data/gib-archives
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+
+  # ── GibUserList Worker (tek seferlik çalışır, veriyi günceller, çıkar) ──
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.worker
+    environment:
+      - TZ=Europe/Istanbul
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB:-gib_user_list};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD}
+      - GibEndpoints__BatchSize=25000
+      - ArchiveStorage__BasePath=/data/gib-archives
+      - Webhooks__Enabled=false
+      - Webhooks__ServiceName=datasoft-sync-service
+      - Webhooks__Environment=Production
+      - Webhooks__Slack__Enabled=false
+      - Webhooks__Slack__WebhookUrl=""
+      - Webhooks__Slack__Channel=#user-list-sync
+      - Webhooks__Slack__NotifyOn__0=SyncCompleted
+      - Webhooks__Slack__NotifyOn__1=SyncFailed
+      - Webhooks__Slack__NotifyOn__2=SyncPartial
+      - Webhooks__Slack__NotifyOn__3=RemovalGuardTriggered
+      - Webhooks__Slack__NotifyOn__4=MvRefreshFailed
+      - Webhooks__Slack__NotifyOn__5=HealthStatusChanged
+    volumes:
+      - gib-archives:/data/gib-archives
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    restart: "no"
+
+  # ── Prometheus ─────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data-gib-gibuser:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Grafana ────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/gibuserlist.json
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data-gib-gibuser:/var/lib/grafana
+    depends_on:
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+
+volumes:
+  pgdata-gib-gibuser:
+  prometheus-data-gib-gibuser:
+  grafana-data-gib-gibuser:
+  gib-archives:

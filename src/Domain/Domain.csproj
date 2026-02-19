@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>MERSEL.Services.GibUserList.Domain</RootNamespace>
+    <Description>GIB User List - Domain layer. Pure entities, value objects and enums with zero external dependencies.</Description>
+  </PropertyGroup>
+
+</Project>

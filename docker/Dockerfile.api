@@ -1,0 +1,23 @@
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+RUN adduser --disabled-password --gecos "" --no-create-home appuser
+WORKDIR /app
+EXPOSE 8080
+
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
+COPY Directory.Build.props Directory.Packages.props ./
+COPY src/Domain/Domain.csproj src/Domain/
+COPY src/Application/Application.csproj src/Application/
+COPY src/Infrastructure/Infrastructure.csproj src/Infrastructure/
+COPY src/Web.Api/Web.Api.csproj src/Web.Api/
+RUN dotnet restore src/Web.Api/Web.Api.csproj
+
+COPY src/ src/
+RUN dotnet publish src/Web.Api/Web.Api.csproj -c Release -o /app/publish
+
+FROM base AS final
+COPY --from=build /app/publish .
+RUN mkdir -p /data/gib-archives && chown appuser:appuser /data/gib-archives
+USER appuser
+ENTRYPOINT ["dotnet", "Web.Api.dll"]

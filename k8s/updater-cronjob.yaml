@@ -1,0 +1,70 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: gib-gibuser-updater
+spec:
+  schedule: "0 3,9,15,21 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 5
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+          containers:
+            - name: updater
+              image: ghcr.io/mersel-os/gib-gibuser-updater:latest
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              env:
+                - name: TZ
+                  valueFrom:
+                    configMapKeyRef:
+                      name: gib-gibuser-config
+                      key: timezone
+                - name: ConnectionStrings__DefaultConnection
+                  valueFrom:
+                    secretKeyRef:
+                      name: gib-gibuser-secrets
+                      key: db-connection-string
+                - name: GibEndpoints__PkListUrl
+                  valueFrom:
+                    configMapKeyRef:
+                      name: gib-gibuser-config
+                      key: gib-pk-list-url
+                - name: GibEndpoints__GbListUrl
+                  valueFrom:
+                    configMapKeyRef:
+                      name: gib-gibuser-config
+                      key: gib-gb-list-url
+                - name: ArchiveStorage__BasePath
+                  value: "/data/gib-archives"
+              volumeMounts:
+                - name: gib-archives
+                  mountPath: /data/gib-archives
+                - name: tmp
+                  mountPath: /tmp
+              resources:
+                requests:
+                  memory: "256Mi"
+                  cpu: "250m"
+                limits:
+                  memory: "4Gi"
+                  cpu: "1000m"
+          volumes:
+            - name: gib-archives
+              persistentVolumeClaim:
+                claimName: gib-gibuser-archives-pvc
+            - name: tmp
+              emptyDir: {}
+          restartPolicy: Never

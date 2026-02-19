@@ -1,0 +1,19 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+
+    <!-- NuGet Metadata -->
+    <Authors>Mersel</Authors>
+    <Company>MERSEL YAZILIM A.Ş.</Company>
+    <Copyright>Copyright (c) 2026 MERSEL YAZILIM A.Ş.</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/mersel-os/MERSEL.Services.GibUserList</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/mersel-os/MERSEL.Services.GibUserList.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+
+    <VersionPrefix>1.0.0</VersionPrefix>
+  </PropertyGroup>
+</Project>

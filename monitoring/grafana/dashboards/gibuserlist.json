@@ -1,0 +1,552 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "MERSEL GibUserList Servis Metrikleri — Sorgu, Sync, Cache, Auth, HTTP ve .NET Runtime",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "Genel Bakis",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "blue", "value": 100 }, { "color": "purple", "value": 1000 }] },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 5, "w": 3, "x": 0, "y": 1 },
+      "id": 1,
+      "options": { "colorMode": "background_solid", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "title": "Toplam Sorgu",
+      "type": "stat",
+      "targets": [{ "expr": "sum(gibuserlist_queries_total)", "legendFormat": "Toplam", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 5 }] },
+          "unit": "percent"
+        }
+      },
+      "gridPos": { "h": 5, "w": 3, "x": 3, "y": 1 },
+      "id": 2,
+      "options": { "colorMode": "background_solid", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "title": "Hata Orani (%)",
+      "type": "stat",
+      "targets": [{ "expr": "sum(rate(gibuserlist_queries_errors_total[5m])) / (sum(rate(gibuserlist_queries_total[5m])) + sum(rate(gibuserlist_queries_errors_total[5m])) + 0.001) * 100", "legendFormat": "Hata %", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 50 }, { "color": "red", "value": 200 }] },
+          "unit": "ms"
+        }
+      },
+      "gridPos": { "h": 5, "w": 3, "x": 6, "y": 1 },
+      "id": 3,
+      "options": { "colorMode": "background_solid", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "title": "Ort. Sorgu Suresi",
+      "type": "stat",
+      "targets": [{ "expr": "sum(rate(gibuserlist_queries_duration_milliseconds_sum[5m])) / sum(rate(gibuserlist_queries_duration_milliseconds_count[5m]))", "legendFormat": "Ort. ms", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 120 }, { "color": "red", "value": 300 }] },
+          "unit": "s"
+        }
+      },
+      "gridPos": { "h": 5, "w": 3, "x": 9, "y": 1 },
+      "id": 4,
+      "options": { "colorMode": "background_solid", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "title": "Son Sync Suresi",
+      "type": "stat",
+      "targets": [{ "expr": "gibuserlist_sync_last_duration_seconds", "legendFormat": "saniye", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "blue", "value": 50 }, { "color": "purple", "value": 80 }] },
+          "unit": "percent"
+        }
+      },
+      "gridPos": { "h": 5, "w": 3, "x": 12, "y": 1 },
+      "id": 5,
+      "options": { "colorMode": "background_solid", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "title": "Cache Hit Orani",
+      "type": "stat",
+      "targets": [{ "expr": "sum(rate(gibuserlist_cache_hits_total[5m])) / (sum(rate(gibuserlist_cache_hits_total[5m])) + sum(rate(gibuserlist_cache_misses_total[5m])) + 0.001) * 100", "legendFormat": "Hit %", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "dtdurations"
+        }
+      },
+      "gridPos": { "h": 5, "w": 3, "x": 15, "y": 1 },
+      "id": 6,
+      "options": { "colorMode": "background_solid", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "title": "Uptime",
+      "type": "stat",
+      "targets": [{ "expr": "gibuserlist_process_uptime_seconds", "legendFormat": "", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }, { "color": "green", "value": 50000 }, { "color": "purple", "value": 100000 }] },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 5, "w": 3, "x": 18, "y": 1 },
+      "id": 7,
+      "options": { "colorMode": "background_solid", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "title": "e-Fatura Mukellef",
+      "type": "stat",
+      "targets": [{ "expr": "gibuserlist_users_einvoice_count", "legendFormat": "", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }, { "color": "green", "value": 20000 }, { "color": "purple", "value": 50000 }] },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 5, "w": 3, "x": 21, "y": 1 },
+      "id": 8,
+      "options": { "colorMode": "background_solid", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "title": "e-Irsaliye Mukellef",
+      "type": "stat",
+      "targets": [{ "expr": "gibuserlist_users_edespatch_count", "legendFormat": "", "refId": "A" }]
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 },
+      "id": 200,
+      "title": "Sorgu Performansi",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "id": 11,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Sorgu Rate (tip bazinda)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum(rate(gibuserlist_queries_total[1m])) by (type)", "legendFormat": "{{type}}", "refId": "A" },
+        { "expr": "sum(rate(gibuserlist_queries_errors_total[1m]))", "legendFormat": "error", "refId": "B" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "ms" } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "id": 12,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Sorgu Suresi Dagilimi (p50/p95/p99)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum(rate(gibuserlist_queries_duration_milliseconds_bucket[5m])) by (le))", "legendFormat": "p50", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, sum(rate(gibuserlist_queries_duration_milliseconds_bucket[5m])) by (le))", "legendFormat": "p95", "refId": "B" },
+        { "expr": "histogram_quantile(0.99, sum(rate(gibuserlist_queries_duration_milliseconds_bucket[5m])) by (le))", "legendFormat": "p99", "refId": "C" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "id": 13,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Belge Turune Gore Sorgu Rate",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum(rate(gibuserlist_queries_total[1m])) by (document_type)", "legendFormat": "{{document_type}}", "refId": "A" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "ms" } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "id": 14,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Identifier vs Search vs Batch Suresi",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(gibuserlist_queries_duration_milliseconds_bucket{type=\"identifier\"}[5m])) by (le))", "legendFormat": "identifier p95", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, sum(rate(gibuserlist_queries_duration_milliseconds_bucket{type=\"search\"}[5m])) by (le))", "legendFormat": "search p95", "refId": "B" },
+        { "expr": "histogram_quantile(0.95, sum(rate(gibuserlist_queries_duration_milliseconds_bucket{type=\"batch\"}[5m])) by (le))", "legendFormat": "batch p95", "refId": "C" }
+      ]
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 25 },
+      "id": 300,
+      "title": "Sync Job & Mukellef Sayilari",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 26 },
+      "id": 21,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Mukellef Sayilari (zaman icinde)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "gibuserlist_users_einvoice_count", "legendFormat": "e-Fatura", "refId": "A" },
+        { "expr": "gibuserlist_users_edespatch_count", "legendFormat": "e-Irsaliye", "refId": "B" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 26 },
+      "id": 22,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Son Sync Suresi (zaman icinde)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "gibuserlist_sync_last_duration_seconds", "legendFormat": "son sync suresi", "refId": "A" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "axisSoftMin": 0
+          }
+        }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 26 },
+      "id": 24,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "MV Refresh Suresi & Hatalar",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(gibuserlist_mv_refresh_duration_seconds_bucket[1h])) by (le))", "legendFormat": "MV p95", "refId": "A" },
+        { "expr": "sum(increase(gibuserlist_mv_refresh_errors_total[1h]))", "legendFormat": "hatalar", "refId": "B" }
+      ]
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 35 },
+      "id": 250,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Degisiklik Sayisi (eklenen/guncellenen/silinen)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum(increase(gibuserlist_sync_changes_total{change_type=\"added\"}[1h]))", "legendFormat": "eklenen", "refId": "A" },
+        { "expr": "sum(increase(gibuserlist_sync_changes_total{change_type=\"modified\"}[1h]))", "legendFormat": "guncellenen", "refId": "B" },
+        { "expr": "sum(increase(gibuserlist_sync_changes_total{change_type=\"removed\"}[1h]))", "legendFormat": "silinen", "refId": "C" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 35 },
+      "id": 251,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Removal Guard Atlanan Silme",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum(increase(gibuserlist_sync_removal_skipped_total[1h]))", "legendFormat": "atlanan silme", "refId": "A" }
+      ]
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 44 },
+      "id": 400,
+      "title": "Cache",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "ops" } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 },
+      "id": 31,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Cache Hit/Miss Rate",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum(rate(gibuserlist_cache_hits_total[1m]))", "legendFormat": "hits/s", "refId": "A" },
+        { "expr": "sum(rate(gibuserlist_cache_misses_total[1m]))", "legendFormat": "misses/s", "refId": "B" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "percent" } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 36 },
+      "id": 32,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Cache Hit Orani (%)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum(rate(gibuserlist_cache_hits_total[5m])) / (sum(rate(gibuserlist_cache_hits_total[5m])) + sum(rate(gibuserlist_cache_misses_total[5m])) + 0.001) * 100", "legendFormat": "hit ratio", "refId": "A" }
+      ]
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 45 },
+      "id": 450,
+      "title": "Kimlik Dogrulama (Auth)",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 46 },
+      "id": 61,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Auth Istek Rate (durum bazinda)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum(rate(gibuserlist_auth_requests_total[1m])) by (status)", "legendFormat": "{{status}}", "refId": "A" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 46 },
+      "id": 62,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Istemci Bazinda Sorgu Rate",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum(rate(gibuserlist_auth_requests_total{status=\"success\"}[1m])) by (client)", "legendFormat": "{{client}}", "refId": "A" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] },
+          "unit": "reqps"
+        }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 46 },
+      "id": 63,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Basarisiz Auth Girisimi (neden bazinda)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum(rate(gibuserlist_auth_requests_total{status=\"failure\"}[1m])) by (reason)", "legendFormat": "{{reason}}", "refId": "A" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 54 },
+      "id": 64,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Istemci Toplam Sorgu Sayisi",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum(increase(gibuserlist_auth_requests_total{status=\"success\"}[1h])) by (client)", "legendFormat": "{{client}}", "refId": "A" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 5 }] },
+          "unit": "percent"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 54 },
+      "id": 65,
+      "options": { "colorMode": "background_solid", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "title": "Auth Basarisizlik Orani (%)",
+      "type": "stat",
+      "targets": [
+        { "expr": "sum(rate(gibuserlist_auth_requests_total{status=\"failure\"}[5m])) / (sum(rate(gibuserlist_auth_requests_total[5m])) + 0.001) * 100", "legendFormat": "Failure %", "refId": "A" }
+      ]
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 63 },
+      "id": 500,
+      "title": "HTTP Istekleri",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 64 },
+      "id": 41,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "HTTP Status Code Rate",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum(rate(http_server_request_duration_seconds_count{http_response_status_code=~\"2..\"}[1m]))", "legendFormat": "2xx", "refId": "A" },
+        { "expr": "sum(rate(http_server_request_duration_seconds_count{http_response_status_code=~\"4..\"}[1m]))", "legendFormat": "4xx", "refId": "B" },
+        { "expr": "sum(rate(http_server_request_duration_seconds_count{http_response_status_code=~\"5..\"}[1m]))", "legendFormat": "5xx", "refId": "C" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 64 },
+      "id": 42,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "HTTP Response Time (p50/p95/p99)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum(rate(http_server_request_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p50", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, sum(rate(http_server_request_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p95", "refId": "B" },
+        { "expr": "histogram_quantile(0.99, sum(rate(http_server_request_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p99", "refId": "C" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 72 },
+      "id": 43,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Endpoint Trafigi",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum(rate(http_server_request_duration_seconds_count[1m])) by (http_route)", "legendFormat": "{{http_route}}", "refId": "A" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 72 },
+      "id": 44,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Aktif HTTP Istekleri",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum(http_server_active_requests)", "legendFormat": "active", "refId": "A" }
+      ]
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 81 },
+      "id": 600,
+      "title": ".NET Runtime",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "bytes" } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 82 },
+      "id": 51,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "GC Heap Boyutu",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum(process_runtime_dotnet_gc_heap_size_bytes) by (generation)", "legendFormat": "gen{{generation}}", "refId": "A" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 82 },
+      "id": 52,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "GC Collection Sayisi",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum(rate(process_runtime_dotnet_gc_collections_count[5m])) by (generation)", "legendFormat": "gen{{generation}}/s", "refId": "A" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 90 },
+      "id": 53,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Thread Pool",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "process_runtime_dotnet_thread_pool_threads_count", "legendFormat": "threads", "refId": "A" },
+        { "expr": "process_runtime_dotnet_thread_pool_queue_length", "legendFormat": "queue", "refId": "B" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "bytes" } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 90 },
+      "id": 54,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Process Memory",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "process_resident_memory_bytes", "legendFormat": "RSS", "refId": "A" },
+        { "expr": "process_virtual_memory_bytes", "legendFormat": "Virtual", "refId": "B" }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["gibuserlist", "mersel"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": false, "text": "Prometheus", "value": "Prometheus" },
+        "hide": 2,
+        "includeAll": false,
+        "multi": false,
+        "name": "DS_PROMETHEUS",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "type": "datasource"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "GIB User List Registry",
+  "uid": "gibuserlist-main",
+  "version": 4
+}
