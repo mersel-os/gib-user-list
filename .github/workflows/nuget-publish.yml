@@ -21,7 +21,9 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: |
+            8.0.x
+            9.0.x
 
       - name: Extract version from tag
         id: version
@@ -37,7 +39,7 @@ jobs:
         run: dotnet test tests/Client.Tests/Client.Tests.csproj -c Release --verbosity normal
 
       - name: Pack
-        run: dotnet pack src/Client/Client.csproj -c Release --no-build -p:Version=${{ steps.version.outputs.VERSION }} -o ./nupkg
+        run: dotnet pack src/Client/Client.csproj -c Release -p:Version=${{ steps.version.outputs.VERSION }} -o ./nupkg
 
       - name: Push to NuGet.org
         run: dotnet nuget push ./nupkg/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
