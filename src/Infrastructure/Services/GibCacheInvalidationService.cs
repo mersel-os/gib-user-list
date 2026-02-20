@@ -16,7 +16,7 @@ public sealed class GibCacheInvalidationService(
         var totalKeys = diffResults.Sum(d => d.InvalidationCount);
         if (totalKeys == 0)
         {
-            logger.LogInformation("No cache entries to invalidate — no modified or removed identifiers.");
+            logger.LogDebug("No cache entries to invalidate — no modified or removed identifiers.");
             return;
         }
 

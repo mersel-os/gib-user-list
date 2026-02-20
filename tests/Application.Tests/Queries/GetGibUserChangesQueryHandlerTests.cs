@@ -152,7 +152,7 @@ public class GetGibUserChangesQueryHandlerTests : IDisposable
     {
         var handler = new GetGibUserChangesQueryHandler(_dbContext, _metrics);
         var query = new GetGibUserChangesQuery(
-            new DateTime(2026, 2, 17, 3, 0, 0), GibUserDocumentType.EInvoice, Page: 1, PageSize: 2);
+            new DateTime(2026, 2, 17, 3, 0, 0), GibUserDocumentType.EInvoice, page: 1, pageSize: 2);
 
         var result = await handler.Handle(query, CancellationToken.None);
 

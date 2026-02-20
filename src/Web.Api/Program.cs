@@ -31,7 +31,7 @@ try
     }
 
     // Serilog (günlükleme) — DataProtection uyarıları susturuluyor (stateless servis, key kalıcılığı gerekmez)
-    builder.Services.AddSerilog(config => config
+    builder.Services.AddSerilog((services, config) => config
         .ReadFrom.Configuration(builder.Configuration)
         .MinimumLevel.Override("Microsoft.AspNetCore.DataProtection", Serilog.Events.LogEventLevel.Error)
         .WriteTo.Console());

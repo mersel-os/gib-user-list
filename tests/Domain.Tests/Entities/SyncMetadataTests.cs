@@ -22,7 +22,7 @@ public class SyncMetadataTests
     [Fact]
     public void SyncMetadata_ShouldStoreAllProperties()
     {
-        var syncTime = DateTime.UtcNow;
+        var syncTime = DateTime.Now;
         var duration = TimeSpan.FromMinutes(5);
 
         var metadata = new SyncMetadata

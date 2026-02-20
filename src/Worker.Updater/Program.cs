@@ -22,7 +22,7 @@ try
         return;
     }
 
-    builder.Services.AddSerilog(config => config
+    builder.Services.AddSerilog((services, config) => config
         .ReadFrom.Configuration(builder.Configuration)
         .WriteTo.Console());
 

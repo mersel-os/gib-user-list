@@ -12,12 +12,28 @@ namespace MERSEL.Services.GibUserList.Application.Queries;
 /// Belirli bir tarihten sonraki mükellef değişikliklerini (eklenen/güncellenen/silinen) sorgular.
 /// Changelog tablosundan okur. Retention süresi dışındaki istekler için null döner (410 Gone).
 /// </summary>
-public sealed record GetGibUserChangesQuery(
-    DateTime Since,
-    GibUserDocumentType DocumentType,
-    int Page = 1,
-    int PageSize = 100,
-    DateTime? Until = null) : IQuery<GibUserChangesResult?>;
+public sealed record GetGibUserChangesQuery : IQuery<GibUserChangesResult?>
+{
+    public DateTime Since { get; }
+    public GibUserDocumentType DocumentType { get; }
+    public int Page { get; }
+    public int PageSize { get; }
+    public DateTime? Until { get; }
+
+    public GetGibUserChangesQuery(
+        DateTime since,
+        GibUserDocumentType documentType,
+        int page = 1,
+        int pageSize = 100,
+        DateTime? until = null)
+    {
+        Since = DateTime.SpecifyKind(since, DateTimeKind.Unspecified);
+        DocumentType = documentType;
+        Page = page;
+        PageSize = pageSize;
+        Until = until.HasValue ? DateTime.SpecifyKind(until.Value, DateTimeKind.Unspecified) : null;
+    }
+}
 
 public sealed class GetGibUserChangesQueryValidator : AbstractValidator<GetGibUserChangesQuery>
 {
@@ -83,7 +99,7 @@ public sealed class GetGibUserChangesQueryHandler(
             if (oldestEntry != default && request.Since < oldestEntry)
                 return null; // API katmanında 410 Gone'a çevrilir
 
-            var now = DateTime.Now;
+            var now = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Unspecified);
             var effectiveUntil = request.Until.HasValue && request.Until.Value <= now
                 ? request.Until.Value
                 : now;

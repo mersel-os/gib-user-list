@@ -198,7 +198,7 @@ public class FullPipelineIntegrationTests
         {
             alias.Name.Should().NotBeNullOrWhiteSpace("Alias adı dolu olmalı (ör: urn:mail:defaultpk)");
             alias.Type.Should().NotBeNullOrWhiteSpace("Alias tipi dolu olmalı (PK veya GB)");
-            alias.CreationTime.Should().BeBefore(DateTime.UtcNow, "Alias oluşturma zamanı geçmişte olmalı");
+            alias.CreationTime.Should().BeBefore(DateTime.Now, "Alias oluşturma zamanı geçmişte olmalı");
         }
     }
 

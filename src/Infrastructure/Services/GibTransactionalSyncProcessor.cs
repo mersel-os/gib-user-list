@@ -196,7 +196,7 @@ public sealed class GibTransactionalSyncProcessor(
         CancellationToken ct)
     {
         await using var cmd = new NpgsqlCommand(sql, connection) { Transaction = transaction };
-        cmd.CommandTimeout = 300;
+        cmd.CommandTimeout = 900;
         await cmd.ExecuteNonQueryAsync(ct);
     }
 

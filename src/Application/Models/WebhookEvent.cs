@@ -42,7 +42,7 @@ public sealed record WebhookEvent
     public required WebhookEventType EventType { get; init; }
     public required WebhookSeverity Severity { get; init; }
     public required string Summary { get; init; }
-    public DateTime Timestamp { get; init; } = DateTime.UtcNow;
+    public DateTime Timestamp { get; init; } = DateTime.Now;
     public Dictionary<string, object> Payload { get; init; } = [];
 
     public string EventName => EventType.ToString();

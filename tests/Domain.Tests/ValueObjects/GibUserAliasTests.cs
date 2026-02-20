@@ -34,14 +34,14 @@ public class GibUserAliasTests
         {
             Name = "urn:mail:defaultpk",
             Type = "PK",
-            CreationTime = DateTime.UtcNow
+            CreationTime = DateTime.Now
         };
 
         var alias2 = new GibUserAlias
         {
             Name = "urn:mail:otherpk",
             Type = "PK",
-            CreationTime = DateTime.UtcNow
+            CreationTime = DateTime.Now
         };
 
         alias1.Should().NotBe(alias2);

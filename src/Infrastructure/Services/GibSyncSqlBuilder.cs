@@ -71,26 +71,46 @@ internal static class GibSyncSqlBuilder
 
     public static string BuildCurrentCountSql(string tableName) => $"SELECT COUNT(*) FROM {tableName};";
 
-    public static string BuildUpsertSql(string tableName) => $@"
-        INSERT INTO {tableName}
-            (id, identifier, account_type, first_creation_time, title, title_lower, type, aliases_json, content_hash)
-        SELECT
-            gen_random_uuid(), identifier, account_type, first_creation_time,
-            title, title_lower, type, aliases_json, content_hash
-        FROM _new_data
-        ON CONFLICT (identifier) DO UPDATE SET
-            aliases_json = EXCLUDED.aliases_json,
-            title = EXCLUDED.title,
-            title_lower = EXCLUDED.title_lower,
-            account_type = EXCLUDED.account_type,
-            type = EXCLUDED.type,
-            first_creation_time = EXCLUDED.first_creation_time,
-            content_hash = EXCLUDED.content_hash
-        WHERE {tableName}.content_hash IS DISTINCT FROM EXCLUDED.content_hash;";
+    public static string BuildInsertAddedSql(string tableName, List<string> addedIdentifiers)
+    {
+        if (addedIdentifiers.Count == 0) return string.Empty;
+        var inList = string.Join(",", addedIdentifiers.Select(EscapeSqlString));
+        return $@"
+            INSERT INTO {tableName}
+                (id, identifier, account_type, first_creation_time, title, title_lower, type, aliases_json, content_hash)
+            SELECT
+                gen_random_uuid(), identifier, account_type, first_creation_time,
+                title, title_lower, type, aliases_json, content_hash
+            FROM _new_data
+            WHERE identifier IN ({inList});";
+    }
 
-    public static string BuildHardDeleteSql(string tableName) => $@"
-        DELETE FROM {tableName}
-        WHERE identifier NOT IN (SELECT identifier FROM _new_data);";
+    public static string BuildUpdateModifiedSql(string tableName, List<string> modifiedIdentifiers)
+    {
+        if (modifiedIdentifiers.Count == 0) return string.Empty;
+        var inList = string.Join(",", modifiedIdentifiers.Select(EscapeSqlString));
+        return $@"
+            UPDATE {tableName} t SET
+                aliases_json = nd.aliases_json,
+                title = nd.title,
+                title_lower = nd.title_lower,
+                account_type = nd.account_type,
+                type = nd.type,
+                first_creation_time = nd.first_creation_time,
+                content_hash = nd.content_hash
+            FROM _new_data nd
+            WHERE t.identifier = nd.identifier
+              AND t.identifier IN ({inList});";
+    }
+
+    public static string BuildHardDeleteSql(string tableName, List<string> removedIdentifiers)
+    {
+        if (removedIdentifiers.Count == 0) return string.Empty;
+        var inList = string.Join(",", removedIdentifiers.Select(EscapeSqlString));
+        return $@"
+            DELETE FROM {tableName}
+            WHERE identifier IN ({inList});";
+    }
 
     public static string BuildDeleteOldChangelogSql(int retentionDays) => $@"
         DELETE FROM gib_user_changelog

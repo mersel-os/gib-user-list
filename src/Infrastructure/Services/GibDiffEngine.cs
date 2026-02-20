@@ -100,19 +100,19 @@ public sealed class GibDiffEngine(
             }
         }
 
-        await ExecuteNonQueryAsync(
-            connection,
-            transaction,
-            GibSyncSqlBuilder.BuildUpsertSql(tableName),
-            ct);
+        var insertSql = GibSyncSqlBuilder.BuildInsertAddedSql(tableName, addedIdentifiers);
+        if (!string.IsNullOrEmpty(insertSql))
+            await ExecuteNonQueryAsync(connection, transaction, insertSql, ct);
+
+        var updateSql = GibSyncSqlBuilder.BuildUpdateModifiedSql(tableName, modifiedIdentifiers);
+        if (!string.IsNullOrEmpty(updateSql))
+            await ExecuteNonQueryAsync(connection, transaction, updateSql, ct);
 
         if (performDeletion && removedIdentifiers.Count > 0)
         {
-            await ExecuteNonQueryAsync(
-                connection,
-                transaction,
-                GibSyncSqlBuilder.BuildHardDeleteSql(tableName),
-                ct);
+            var deleteSql = GibSyncSqlBuilder.BuildHardDeleteSql(tableName, removedIdentifiers);
+            if (!string.IsNullOrEmpty(deleteSql))
+                await ExecuteNonQueryAsync(connection, transaction, deleteSql, ct);
         }
 
         var docTypeValue = (short)docTypeEnum;
@@ -171,7 +171,7 @@ public sealed class GibDiffEngine(
         CancellationToken ct)
     {
         await using var cmd = new NpgsqlCommand(sql, connection) { Transaction = transaction };
-        cmd.CommandTimeout = 300;
+        cmd.CommandTimeout = 900;
         await cmd.ExecuteNonQueryAsync(ct);
     }
 }
