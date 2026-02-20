@@ -1,12 +1,14 @@
 using MERSEL.Services.GibUserList.Application.Interfaces;
+using MERSEL.Services.GibUserList.Domain.Entities;
 using MERSEL.Services.GibUserList.Web.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 
 namespace MERSEL.Services.GibUserList.Web.Endpoints;
 
 /// <summary>
 /// Arşiv dosyası yanıt modeli.
 /// </summary>
-public sealed record ArchiveFileResponse(string FileName, long SizeBytes, DateTime CreatedAt);
+public sealed record ArchiveFileResponse(string FileName, long SizeBytes, DateTime CreatedAt, int UserCount);
 
 /// <summary>
 /// e-Fatura mükellef listesi arşiv uç noktaları.
@@ -41,18 +43,29 @@ public sealed class EInvoiceArchivesEndpoints : EndpointGroupBase
     }
 
     private static async Task<IResult> ListArchives(
-        IArchiveStorage archiveStorage, ISyncTimeProvider syncTime, HttpContext httpContext, CancellationToken ct)
+        IGibUserListReadDbContext dbContext, ISyncTimeProvider syncTime, HttpContext httpContext, CancellationToken ct)
     {
-        var files = await archiveStorage.ListAsync("einvoice/", ct);
+        var archives = await dbContext.ArchiveFiles
+            .AsNoTracking()
+            .Where(a => a.DocumentType == GibDocumentType.EInvoice)
+            .OrderByDescending(a => a.CreatedAt)
+            .Select(a => new ArchiveFileResponse(a.FileName, a.SizeBytes, a.CreatedAt, a.UserCount))
+            .ToListAsync(ct);
+
         await AppendSyncHeader(syncTime, httpContext, ct);
-        return Results.Ok(files.Select(f => new ArchiveFileResponse(f.FileName, f.SizeBytes, f.CreatedAt)).ToList());
+        return Results.Ok(archives);
     }
 
     private static async Task<IResult> DownloadLatest(
-        IArchiveStorage archiveStorage, ISyncTimeProvider syncTime, HttpContext httpContext, CancellationToken ct)
+        IGibUserListReadDbContext dbContext, IArchiveStorage archiveStorage,
+        ISyncTimeProvider syncTime, HttpContext httpContext, CancellationToken ct)
     {
-        var files = await archiveStorage.ListAsync("einvoice/", ct);
-        var latest = files.FirstOrDefault();
+        var latest = await dbContext.ArchiveFiles
+            .AsNoTracking()
+            .Where(a => a.DocumentType == GibDocumentType.EInvoice)
+            .OrderByDescending(a => a.CreatedAt)
+            .FirstOrDefaultAsync(ct);
+
         if (latest is null)
             return Results.NotFound("Henüz e-Fatura arşivi üretilmedi.");
 
@@ -117,18 +130,29 @@ public sealed class EDespatchArchivesEndpoints : EndpointGroupBase
     }
 
     private static async Task<IResult> ListArchives(
-        IArchiveStorage archiveStorage, ISyncTimeProvider syncTime, HttpContext httpContext, CancellationToken ct)
+        IGibUserListReadDbContext dbContext, ISyncTimeProvider syncTime, HttpContext httpContext, CancellationToken ct)
     {
-        var files = await archiveStorage.ListAsync("edespatch/", ct);
+        var archives = await dbContext.ArchiveFiles
+            .AsNoTracking()
+            .Where(a => a.DocumentType == GibDocumentType.EDespatch)
+            .OrderByDescending(a => a.CreatedAt)
+            .Select(a => new ArchiveFileResponse(a.FileName, a.SizeBytes, a.CreatedAt, a.UserCount))
+            .ToListAsync(ct);
+
         await AppendSyncHeader(syncTime, httpContext, ct);
-        return Results.Ok(files.Select(f => new ArchiveFileResponse(f.FileName, f.SizeBytes, f.CreatedAt)).ToList());
+        return Results.Ok(archives);
     }
 
     private static async Task<IResult> DownloadLatest(
-        IArchiveStorage archiveStorage, ISyncTimeProvider syncTime, HttpContext httpContext, CancellationToken ct)
+        IGibUserListReadDbContext dbContext, IArchiveStorage archiveStorage,
+        ISyncTimeProvider syncTime, HttpContext httpContext, CancellationToken ct)
     {
-        var files = await archiveStorage.ListAsync("edespatch/", ct);
-        var latest = files.FirstOrDefault();
+        var latest = await dbContext.ArchiveFiles
+            .AsNoTracking()
+            .Where(a => a.DocumentType == GibDocumentType.EDespatch)
+            .OrderByDescending(a => a.CreatedAt)
+            .FirstOrDefaultAsync(ct);
+
         if (latest is null)
             return Results.NotFound("Henüz e-İrsaliye arşivi üretilmedi.");
 

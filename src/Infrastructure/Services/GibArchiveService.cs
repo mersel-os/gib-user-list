@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Text;
 using System.Xml;
 using MERSEL.Services.GibUserList.Application.Interfaces;
+using MERSEL.Services.GibUserList.Domain.Entities;
 using MERSEL.Services.GibUserList.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -27,6 +28,7 @@ public sealed class GibArchiveService(
             "e_invoice_gib_users",
             $"einvoice/einvoice_users_{timestamp}.xml.gz",
             "Invoice",
+            GibDocumentType.EInvoice,
             ct);
         if (!string.IsNullOrEmpty(invoiceError))
             errors.Add(invoiceError);
@@ -35,6 +37,7 @@ public sealed class GibArchiveService(
             "e_despatch_gib_users",
             $"edespatch/edespatch_users_{timestamp}.xml.gz",
             "DespatchAdvice",
+            GibDocumentType.EDespatch,
             ct);
         if (!string.IsNullOrEmpty(despatchError))
             errors.Add(despatchError);
@@ -48,13 +51,28 @@ public sealed class GibArchiveService(
         {
             var retentionDays = archiveOptions.Value.RetentionDays;
             var cutoff = DateTime.Now.AddDays(-retentionDays);
-            var files = await archiveStorage.ListAsync(ct: ct);
 
-            foreach (var file in files.Where(f => f.CreatedAt < cutoff))
+            var expiredRecords = await dbContext.ArchiveFiles
+                .Where(a => a.CreatedAt < cutoff)
+                .ToListAsync(ct);
+
+            foreach (var record in expiredRecords)
             {
-                await archiveStorage.DeleteAsync(file.FileName, ct);
-                logger.LogInformation("Eski arşiv dosyası silindi: {FileName}", file.FileName);
+                try
+                {
+                    await archiveStorage.DeleteAsync(record.FileName, ct);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Arşiv dosyası silinemedi: {FileName}", record.FileName);
+                }
+
+                dbContext.ArchiveFiles.Remove(record);
+                logger.LogInformation("Eski arşiv silindi: {FileName}", record.FileName);
             }
+
+            if (expiredRecords.Count > 0)
+                await dbContext.SaveChangesAsync(ct);
 
             return null;
         }
@@ -69,6 +87,7 @@ public sealed class GibArchiveService(
         string tableName,
         string archiveFileName,
         string documentType,
+        GibDocumentType docTypeEnum,
         CancellationToken ct)
     {
         if (!AllowedTableNames.Contains(tableName))
@@ -83,6 +102,7 @@ public sealed class GibArchiveService(
                 await connection.OpenAsync(ct);
 
             long fileSize;
+            int userCount;
             var sw = System.Diagnostics.Stopwatch.StartNew();
 
             await using (var fileStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write, FileShare.None, 65536, true))
@@ -101,7 +121,7 @@ public sealed class GibArchiveService(
 
                 await using (var countCmd = new NpgsqlCommand($"SELECT COUNT(*)::int FROM {tableName}", connection))
                 {
-                    var userCount = (int)(await countCmd.ExecuteScalarAsync(ct))!;
+                    userCount = (int)(await countCmd.ExecuteScalarAsync(ct))!;
                     writer.WriteAttributeString("count", userCount.ToString());
                 }
 
@@ -145,9 +165,21 @@ public sealed class GibArchiveService(
                 await archiveStorage.SaveAsync(archiveFileName, uploadStream, ct);
             }
 
+            var archiveRecord = new ArchiveFile
+            {
+                Id = Guid.CreateVersion7(),
+                DocumentType = docTypeEnum,
+                FileName = archiveFileName,
+                SizeBytes = fileSize,
+                CreatedAt = DateTime.Now,
+                UserCount = userCount
+            };
+            dbContext.ArchiveFiles.Add(archiveRecord);
+            await dbContext.SaveChangesAsync(ct);
+
             logger.LogInformation(
-                "Arşiv üretildi: {ArchiveFileName} ({Size:N0} bytes, {Duration})",
-                archiveFileName, fileSize, sw.Elapsed);
+                "Arşiv üretildi: {ArchiveFileName} ({Size:N0} bytes, {UserCount} users, {Duration})",
+                archiveFileName, fileSize, userCount, sw.Elapsed);
             return null;
         }
         catch (Exception ex)

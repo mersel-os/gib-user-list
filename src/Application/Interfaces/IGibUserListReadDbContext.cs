@@ -13,4 +13,5 @@ public interface IGibUserListReadDbContext
     DbSet<EDespatchGibUser> EDespatchGibUsers { get; }
     DbSet<SyncMetadata> SyncMetadata { get; }
     DbSet<GibUserChangeLog> GibUserChangeLogs { get; }
+    DbSet<ArchiveFile> ArchiveFiles { get; }
 }

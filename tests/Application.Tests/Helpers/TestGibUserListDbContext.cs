@@ -17,6 +17,7 @@ internal class TestGibUserListDbContext : DbContext, IGibUserListReadDbContext
     public DbSet<EDespatchGibUser> EDespatchGibUsers => Set<EDespatchGibUser>();
     public DbSet<SyncMetadata> SyncMetadata => Set<SyncMetadata>();
     public DbSet<GibUserChangeLog> GibUserChangeLogs => Set<GibUserChangeLog>();
+    public DbSet<ArchiveFile> ArchiveFiles => Set<ArchiveFile>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -24,6 +25,7 @@ internal class TestGibUserListDbContext : DbContext, IGibUserListReadDbContext
         modelBuilder.Entity<EDespatchGibUser>(b => b.HasKey(e => e.Id));
         modelBuilder.Entity<SyncMetadata>(b => b.HasKey(e => e.Key));
         modelBuilder.Entity<GibUserChangeLog>(b => b.HasKey(e => e.Id));
+        modelBuilder.Entity<ArchiveFile>(b => b.HasKey(e => e.Id));
     }
 
     /// <summary>

@@ -112,24 +112,25 @@ public sealed class GetGibUserChangesQueryHandler(
 
             var totalCount = await baseQuery.CountAsync(ct);
 
-            var changes = await baseQuery
+            var rawChanges = await baseQuery
                 .OrderBy(c => c.ChangedAt)
                 .Skip((request.Page - 1) * request.PageSize)
                 .Take(request.PageSize)
-                .Select(c => new GibUserChangeDto
-                {
-                    Identifier = c.Identifier,
-                    ChangeType = ChangeTypeNames[c.ChangeType],
-                    ChangedAt = c.ChangedAt,
-                    Title = c.Title,
-                    AccountType = c.AccountType,
-                    Type = c.Type,
-                    FirstCreationTime = c.FirstCreationTime,
-                    Aliases = c.AliasesJson != null
-                        ? AliasJsonHelper.ParseAliases(c.AliasesJson)
-                        : null
-                })
                 .ToListAsync(ct);
+
+            var changes = rawChanges.Select(c => new GibUserChangeDto
+            {
+                Identifier = c.Identifier,
+                ChangeType = ChangeTypeNames[c.ChangeType],
+                ChangedAt = c.ChangedAt,
+                Title = c.Title,
+                AccountType = c.AccountType,
+                Type = c.Type,
+                FirstCreationTime = c.FirstCreationTime,
+                Aliases = c.AliasesJson != null
+                    ? AliasJsonHelper.ParseAliases(c.AliasesJson)
+                    : null
+            }).ToList();
 
             sw.Stop();
             metrics.RecordQuery("changes", docType, sw.Elapsed.TotalMilliseconds);

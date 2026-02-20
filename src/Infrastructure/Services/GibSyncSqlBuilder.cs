@@ -114,7 +114,7 @@ internal static class GibSyncSqlBuilder
 
     public static string BuildDeleteOldChangelogSql(int retentionDays) => $@"
         DELETE FROM gib_user_changelog
-        WHERE changed_at < NOW() - INTERVAL '{retentionDays} days';";
+        WHERE changed_at < (NOW() AT TIME ZONE 'Europe/Istanbul') - INTERVAL '{retentionDays} days';";
 
     public static string BuildChangelogInsertSql(
         short docType,
@@ -123,12 +123,13 @@ internal static class GibSyncSqlBuilder
         List<string> removed)
     {
         var parts = new List<string>();
+        const string localNow = "NOW() AT TIME ZONE 'Europe/Istanbul'";
 
         if (added.Count > 0)
         {
             var inList = string.Join(",", added.Select(EscapeSqlString));
             parts.Add($@"
-                SELECT gen_random_uuid(), {docType}, nd.identifier, 1, NOW(),
+                SELECT gen_random_uuid(), {docType}, nd.identifier, 1, {localNow},
                        nd.title, nd.account_type, nd.type, nd.first_creation_time, nd.aliases_json
                 FROM _new_data nd WHERE nd.identifier IN ({inList})");
         }
@@ -137,7 +138,7 @@ internal static class GibSyncSqlBuilder
         {
             var inList = string.Join(",", modified.Select(EscapeSqlString));
             parts.Add($@"
-                SELECT gen_random_uuid(), {docType}, nd.identifier, 2, NOW(),
+                SELECT gen_random_uuid(), {docType}, nd.identifier, 2, {localNow},
                        nd.title, nd.account_type, nd.type, nd.first_creation_time, nd.aliases_json
                 FROM _new_data nd WHERE nd.identifier IN ({inList})");
         }
@@ -145,7 +146,7 @@ internal static class GibSyncSqlBuilder
         if (removed.Count > 0)
         {
             var removedParts = removed.Select(id =>
-                $"SELECT gen_random_uuid(), {docType}::smallint, {EscapeSqlString(id)}, 3::smallint, NOW(), " +
+                $"SELECT gen_random_uuid(), {docType}::smallint, {EscapeSqlString(id)}, 3::smallint, {localNow}, " +
                 "NULL::varchar, NULL::varchar, NULL::varchar, NULL::timestamp, NULL::jsonb");
             parts.Add(string.Join(" UNION ALL ", removedParts));
         }

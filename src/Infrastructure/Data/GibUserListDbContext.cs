@@ -11,6 +11,7 @@ public sealed class GibUserListDbContext(DbContextOptions<GibUserListDbContext> 
     public DbSet<EDespatchGibUser> EDespatchGibUsers => Set<EDespatchGibUser>();
     public DbSet<SyncMetadata> SyncMetadata => Set<SyncMetadata>();
     public DbSet<GibUserChangeLog> GibUserChangeLogs => Set<GibUserChangeLog>();
+    public DbSet<ArchiveFile> ArchiveFiles => Set<ArchiveFile>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

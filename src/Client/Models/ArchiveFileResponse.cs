@@ -13,4 +13,7 @@ public sealed record ArchiveFileResponse
 
     /// <summary>Oluşturulma zamanı</summary>
     public DateTime CreatedAt { get; init; }
+
+    /// <summary>Arşivdeki mükellef sayısı</summary>
+    public int UserCount { get; init; }
 }
