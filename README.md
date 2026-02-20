@@ -37,26 +37,11 @@ Bu servis, bu sorunu **bir kez çözüp tüm iç uygulamalarınıza sunma** fels
 
 Servis, kullanıcı bazlı bir kimlik doğrulama mekanizması içermediğinden doğrudan dış dünyaya açılması önerilmez. Kendi iç servislerinizi ister HMAC ile ister kimlik doğrulama olmadan bu internal micro servise yönlendirebilirsiniz:
 
-```
-        ┌─────────────────────────────────────────────────┐
-        │              Dış Dünya / Kullanıcılar            │
-        └────────────────────┬────────────────────────────┘
-                             ▼
-        ┌─────────────────────────────────────────────────┐
-        │   Sizin e-Dönüşüm API / Backend Servisiniz      │
-        │   (MSSQL, MongoDB, Oracle — fark etmez)          │
-        └────────────────────┬────────────────────────────┘
-                             │  internal HTTP / JSON
-                             ▼
-        ┌──────────────────────────────────────────────────────┐
-        │   GibUserList API  ×N instance (bu servis)            │
-        │   Bağımsız micro servis — yatay ölçeklendirilebilir   │
-        └────────────────────┬─────────────────────────────────┘
-                             ▼
-        ┌─────────────────────────────────────────────────┐
-        │   PostgreSQL                                     │
-        │   Materialized View ile ultra hızlı okuma        │
-        └─────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    A["Dış Dünya / Kullanıcılar"] --> B["Sizin e-Dönüşüm API / Backend Servisiniz<br/>(MSSQL, MongoDB, Oracle — fark etmez)"]
+    B -->|"internal HTTP / JSON"| C["GibUserList API ×N instance<br/>(bu servis — yatay ölçeklendirilebilir)"]
+    C --> D["PostgreSQL<br/>Materialized View ile ultra hızlı okuma"]
 ```
 
 Kendi uygulamanızda mükellef tablosu tutmanıza, GIB XML'lerini parse etmenize gerek kalmaz. Backend servisiniz bu internal micro servise bir HTTP çağrısı yapar, sonucu alır ve kendi iş mantığında kullanır. Veritabanınız ne olursa olsun çalışır.
@@ -67,12 +52,13 @@ Micro servis mimarisinde olduğu için API katmanını dilediğiniz kadar yatay 
 
 ## Mimari
 
-```
-Web.Api ─────────┐
-                  ├──▶ Infrastructure ──▶ Application ──▶ Domain
-Worker.Updater ──┘
-
-Client (bağımsız HTTP istemci kütüphanesi)
+```mermaid
+flowchart LR
+    WA["Web.Api"] --> I["Infrastructure"]
+    WU["Worker.Updater"] --> I
+    I --> A["Application"]
+    A --> D["Domain"]
+    CL["Client<br/>(bağımsız HTTP istemci)"]
 ```
 
 | Proje | Açıklama |
@@ -376,30 +362,14 @@ http://localhost:8080/scalar/v1
 
 Bu servis, tüketicilerin (istemci uygulamaların) mükellef listesini verimli şekilde güncel tutmasını sağlayan bir protokol sunar:
 
-```
-                    ┌─── İlk Başlatma ───┐
-                    │                     │
-                    ▼                     │
-          ┌─────────────────┐             │
-          │  /archives/latest│◄────────────┘
-          │  (Tam XML.GZ)    │    410 Gone = tekrar bootstrap
-          └────────┬────────┘
-                   │ Tam listeyi işle
-                   ▼
-          ┌─────────────────┐
-          │  since = şimdi   │
-          └────────┬────────┘
-                   │
-        ┌──────────▼──────────┐
-        │  /changes?since=... │◄──── periyodik (ör: her 30dk)
-        │  (Delta JSON)       │
-        └──────────┬──────────┘
-                   │ added/modified/removed
-                   ▼
-          ┌─────────────────┐
-          │  Lokal veriyi    │
-          │  güncelle        │
-          └─────────────────┘
+```mermaid
+flowchart TD
+    S(["İlk Başlatma"]) --> A["/archives/latest<br/>(Tam XML.GZ)"]
+    A -->|"Tam listeyi işle"| B["since = şimdi"]
+    B --> C["/changes?since=...<br/>(Delta JSON)"]
+    C -->|"added/modified/removed"| D["Lokal veriyi güncelle"]
+    D -->|"periyodik (ör: her 30dk)"| C
+    C -->|"410 Gone"| A
 ```
 
 **Adımlar:**
@@ -638,6 +608,12 @@ Arşivler FileSystem (`/data/gib-archives`) veya S3/MinIO üzerinde saklanabilir
 **Neden Materialized View?** Worker güncelleme yaparken API tarafı kesintisiz çalışmaya devam etmelidir. `REFRESH MATERIALIZED VIEW CONCURRENTLY` PostgreSQL'e özgü güçlü bir yetenektir: eski veri okunmaya devam ederken arka planda yeni veri hazırlanır, tamamlandığında atomik olarak değiştirilir. MV yenileme başarısız olursa 5 saniye aralıklarla 2 kez daha denenir; tüm denemeler başarısız olursa kritik webhook bildirimi gönderilir. MSSQL Server'da bu davranışın doğrudan karşılığı yoktur — bu servis, PostgreSQL'in bu gücünü sizin için dağıtık bir API olarak sunar.
 
 **Advisory Lock ile eşzamanlılık koruması.** Worker, sync işlemini başlatmadan önce PostgreSQL advisory lock (`pg_try_advisory_xact_lock`) alır. Bu sayede birden fazla Worker instance'ı (ör: CronJob retry, manuel tetikleme) aynı anda çalışsa bile yalnızca biri veri işleme yapar; diğerleri "partial" durumu ile çıkar ve webhook bildirir.
+
+### Diff & Changelog Mekanizması
+
+Worker, ardışık iki senkronizasyon arasındaki farkı `content_hash` karşılaştırması ile tespit eder ve değişiklikleri `gib_user_changelog` tablosuna yazar. Tüketici uygulamalar `/changes?since=...` endpoint'i ile yalnızca delta değişiklikleri sorgulayabilir.
+
+Bu mekanizmanın ayrıntılı teknik dokümantasyonu için bkz. **[docs/CHANGELOG_MECHANISM.md](docs/CHANGELOG_MECHANISM.md)** — içerik olarak diff SQL'leri, ilk senkronizasyon davranışı, retention politikası, güvenlik mekanizmaları, tüketici kuralları ve zaman çizelgesi bazlı senaryo analizini kapsar.
 
 ### Web.Api — Sorgulama Akışı
 
