@@ -584,6 +584,68 @@ Silinecek kayıt oranı eşiği aşarsa:
 
 İlk Worker advisory lock alır ve çalışır. İkinci Worker lock alamaz, "partial" durumu ile çıkar. Veri tutarsızlığı oluşmaz.
 
+#### G. Aynı identifier birden fazla sync'te değişirse
+
+Bu en önemli edge case'lerden biridir. Bir mükellef ardışık sync'lerde farklı durumlar geçirebilir:
+
+```
+Sync T:     3680485737 → removed (GIB listesinden çıktı)
+Sync T+6h:  3680485737 → added   (GIB listesine geri döndü)
+```
+
+Bu durumda changelog'da **aynı identifier için iki ayrı satır** oluşur:
+
+| changed_at | identifier | change_type | title |
+|------------|-----------|-------------|-------|
+| T | 3680485737 | removed | NULL |
+| T+6h | 3680485737 | added | YENİ ÜNVAN A.Ş. |
+
+API bu iki satırı da `ORDER BY changed_at` ile kronolojik sırada döner. **Collapse (tekilleştirme) yapılmaz** — bu bilinçli bir tasarım kararıdır.
+
+**Neden collapse yapılmıyor?**
+
+| Kriter | Collapse yok (mevcut) | Collapse var |
+|--------|----------------------|--------------|
+| Sorgu performansı | Basit `WHERE` + `ORDER BY` — hızlı | `ROW_NUMBER() OVER (PARTITION BY)` — daha ağır |
+| Sayfalama | Doğrudan `OFFSET/LIMIT` | Window function üzerinde — karmaşık |
+| Debug/Audit | Tüm ara durumlar görünür | Ara durumlar kaybolur |
+| Fayda sıklığı | — | **Çok düşük** (ardışık sync'te aynı identifier nadiren değişir) |
+
+Sync'ler 6 saatte bir çalışır, tüketici 15-60 dakikada bir polling yapar. Tipik bir tüketici penceresinde aynı identifier için birden fazla entry olma olasılığı çok düşüktür.
+
+**Tüketicinin sorumluluğu:**
+
+Tüketici, değişiklikleri **kronolojik sırada işlemelidir**. API'nin döndüğü sıra (`ORDER BY changed_at`) bunu garanti eder. Örnek:
+
+```csharp
+foreach (var change in changes.Changes) // zaten sıralı
+{
+    switch (change.ChangeType)
+    {
+        case "added":
+        case "modified":
+            await UpsertLocalUser(change);   // INSERT or UPDATE
+            break;
+        case "removed":
+            await DeleteLocalUser(change.Identifier);  // DELETE (0 rows = zararsız)
+            break;
+    }
+}
+```
+
+`added` ve `modified` için **UPSERT** (varsa güncelle, yoksa ekle) kullanılması önerilir. `removed` için DELETE yapıldığında kayıt yoksa bu bir no-op'tur — zararsızdır.
+
+İsteğe bağlı olarak tüketici, işlemeden önce istemci tarafında dedup yapabilir:
+
+```csharp
+var latestPerIdentifier = changes.Changes
+    .GroupBy(c => c.Identifier)
+    .Select(g => g.OrderByDescending(c => c.ChangedAt).First())
+    .ToList();
+```
+
+Bu yaklaşım sunucu tarafını basit ve hızlı tutarken, ihtiyacı olan tüketiciye optimizasyon esnekliği sağlar.
+
 ---
 
 ## 10. Yapılandırma Referansı
@@ -628,6 +690,14 @@ Hayır. Tüm zaman damgaları sunucu tarafında `NOW() AT TIME ZONE 'Europe/Ista
 **S: Retention süresi değiştirilirse ne olur?**
 
 Hemen etkili olur. Bir sonraki sync'te eski kayıtlar yeni retention'a göre temizlenir. API'deki 410 Gone kontrolü de yeni değeri kullanır. Retention düşürülürse daha fazla kayıt silinir; artırılırsa daha eski veriler korunur.
+
+**S: Bir mükellef silinip tekrar eklenirse API ne döner?**
+
+Changelog'da aynı identifier için iki ayrı entry oluşur: önce `removed`, sonra `added`. API ikisini de kronolojik sırada döner — collapse/tekilleştirme yapılmaz. Tüketici sırayla işler: önce siler, sonra ekler. Detaylı analiz için bkz. [Bölüm 9.2.G](#g-aynı-identifier-birden-fazla-syncte-değişirse).
+
+**S: Neden sunucu tarafında collapse yapılmıyor?**
+
+Üç temel nedenden: (1) Collapse gerektiren senaryolar pratikte çok nadir — sync 6 saatte bir çalışır, aynı identifier'ın ardışık sync'lerde değişmesi istisnaidir. (2) Window function ile collapse, basit `WHERE + ORDER BY` sorgusuna kıyasla daha ağırdır. (3) Tüketici isterse kendi tarafında tek satırda dedup yapabilir. Sunucuyu basit tutmak, istemciye esneklik vermek tercih edilmiştir.
 
 ---
 
