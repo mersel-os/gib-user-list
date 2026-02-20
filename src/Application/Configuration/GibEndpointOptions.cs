@@ -1,4 +1,4 @@
-namespace MERSEL.Services.GibUserList.Infrastructure.Services;
+namespace MERSEL.Services.GibUserList.Application.Configuration;
 
 /// <summary>
 /// GIB liste indirme uç noktaları için yapılandırma seçenekleri.

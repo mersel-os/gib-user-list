@@ -1,3 +1,4 @@
+using MERSEL.Services.GibUserList.Application.Configuration;
 using MERSEL.Services.GibUserList.Application.Interfaces;
 using MERSEL.Services.GibUserList.Application.Models;
 using MERSEL.Services.GibUserList.Domain.Entities;
@@ -55,48 +56,54 @@ public sealed class GibDiffEngine(
             GibSyncSqlBuilder.BuildRemovedIdentifiersSql(tableName),
             ct);
 
+        var currentCount = await QueryScalarAsync<long>(
+            connection,
+            transaction,
+            GibSyncSqlBuilder.BuildCurrentCountSql(tableName),
+            ct);
+
+        var isInitialSync = currentCount == 0 && addedIdentifiers.Count > 0;
+
         logger.LogInformation(
-            "Diff results for {Table}: {Added} added, {Modified} modified, {Removed} removed",
-            tableName, addedIdentifiers.Count, modifiedIdentifiers.Count, removedIdentifiers.Count);
+            "Diff results for {Table}: {Added} added, {Modified} modified, {Removed} removed (initialSync: {IsInitial})",
+            tableName, addedIdentifiers.Count, modifiedIdentifiers.Count, removedIdentifiers.Count, isInitialSync);
+
+        if (isInitialSync)
+        {
+            logger.LogInformation(
+                "Initial sync detected for {Table}. {Count} added entries will NOT be written to changelog.",
+                tableName, addedIdentifiers.Count);
+        }
 
         var performDeletion = true;
-        if (removedIdentifiers.Count > 0)
+        if (removedIdentifiers.Count > 0 && currentCount > 0)
         {
-            var currentCount = await QueryScalarAsync<long>(
-                connection,
-                transaction,
-                GibSyncSqlBuilder.BuildCurrentCountSql(tableName),
-                ct);
+            var removalRatio = (double)removedIdentifiers.Count / currentCount;
+            var maxRatio = endpointOptions.Value.MaxAllowedRemovalPercent / 100.0;
 
-            if (currentCount > 0)
+            if (removalRatio > maxRatio)
             {
-                var removalRatio = (double)removedIdentifiers.Count / currentCount;
-                var maxRatio = endpointOptions.Value.MaxAllowedRemovalPercent / 100.0;
+                logger.LogWarning(
+                    "Removal guard tetiklendi: {RemovalCount}/{TotalCount} ({Ratio:P1}) > %{Max}. Silme ATLANIYOR.",
+                    removedIdentifiers.Count, currentCount, removalRatio, endpointOptions.Value.MaxAllowedRemovalPercent);
+                metrics.RecordRemovalSkipped();
+                performDeletion = false;
 
-                if (removalRatio > maxRatio)
+                await webhookNotifier.NotifyAsync(new WebhookEvent
                 {
-                    logger.LogWarning(
-                        "Removal guard tetiklendi: {RemovalCount}/{TotalCount} ({Ratio:P1}) > %{Max}. Silme ATLANIYOR.",
-                        removedIdentifiers.Count, currentCount, removalRatio, endpointOptions.Value.MaxAllowedRemovalPercent);
-                    metrics.RecordRemovalSkipped();
-                    performDeletion = false;
-
-                    await webhookNotifier.NotifyAsync(new WebhookEvent
+                    EventType = WebhookEventType.RemovalGuardTriggered,
+                    Severity = WebhookSeverity.Warning,
+                    Summary = $"Removal guard triggered for {tableName}: {removedIdentifiers.Count}/{currentCount} ({removalRatio:P1}) exceeds {endpointOptions.Value.MaxAllowedRemovalPercent}% threshold. Deletion SKIPPED.",
+                    Payload = new Dictionary<string, object>
                     {
-                        EventType = WebhookEventType.RemovalGuardTriggered,
-                        Severity = WebhookSeverity.Warning,
-                        Summary = $"Removal guard triggered for {tableName}: {removedIdentifiers.Count}/{currentCount} ({removalRatio:P1}) exceeds {endpointOptions.Value.MaxAllowedRemovalPercent}% threshold. Deletion SKIPPED.",
-                        Payload = new Dictionary<string, object>
-                        {
-                            ["Table"] = tableName,
-                            ["DocumentType"] = documentType,
-                            ["RemovalCount"] = removedIdentifiers.Count,
-                            ["TotalCount"] = currentCount,
-                            ["RemovalRatio"] = $"{removalRatio:P1}",
-                            ["Threshold"] = $"{endpointOptions.Value.MaxAllowedRemovalPercent}%"
-                        }
-                    }, ct);
-                }
+                        ["Table"] = tableName,
+                        ["DocumentType"] = documentType,
+                        ["RemovalCount"] = removedIdentifiers.Count,
+                        ["TotalCount"] = currentCount,
+                        ["RemovalRatio"] = $"{removalRatio:P1}",
+                        ["Threshold"] = $"{endpointOptions.Value.MaxAllowedRemovalPercent}%"
+                    }
+                }, ct);
             }
         }
 
@@ -117,14 +124,18 @@ public sealed class GibDiffEngine(
 
         var docTypeValue = (short)docTypeEnum;
         var effectiveRemoved = performDeletion ? removedIdentifiers : [];
-        var changelogSql = GibSyncSqlBuilder.BuildChangelogInsertSql(
-            docTypeValue,
-            addedIdentifiers,
-            modifiedIdentifiers,
-            effectiveRemoved);
 
-        if (!string.IsNullOrWhiteSpace(changelogSql))
-            await ExecuteNonQueryAsync(connection, transaction, changelogSql, ct);
+        if (!isInitialSync)
+        {
+            var changelogSql = GibSyncSqlBuilder.BuildChangelogInsertSql(
+                docTypeValue,
+                addedIdentifiers,
+                modifiedIdentifiers,
+                effectiveRemoved);
+
+            if (!string.IsNullOrWhiteSpace(changelogSql))
+                await ExecuteNonQueryAsync(connection, transaction, changelogSql, ct);
+        }
 
         if (addedIdentifiers.Count > 0) metrics.RecordChanges("added", addedIdentifiers.Count);
         if (modifiedIdentifiers.Count > 0) metrics.RecordChanges("modified", modifiedIdentifiers.Count);

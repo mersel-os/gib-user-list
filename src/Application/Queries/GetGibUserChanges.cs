@@ -2,6 +2,8 @@ using System.Diagnostics;
 using FluentValidation;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using MERSEL.Services.GibUserList.Application.Configuration;
 using MERSEL.Services.GibUserList.Application.Interfaces;
 using MERSEL.Services.GibUserList.Application.Models;
 using MERSEL.Services.GibUserList.Domain.Entities;
@@ -63,6 +65,7 @@ public sealed class GetGibUserChangesQueryValidator : AbstractValidator<GetGibUs
 
 public sealed class GetGibUserChangesQueryHandler(
     IGibUserListReadDbContext dbContext,
+    IOptions<GibEndpointOptions> endpointOptions,
     IAppMetrics metrics)
     : IQueryHandler<GetGibUserChangesQuery, GibUserChangesResult?>
 {
@@ -88,18 +91,11 @@ public sealed class GetGibUserChangesQueryHandler(
 
         try
         {
-            // Retention window kontrolü: en eski changelog kaydı since'den yeniyse → 410 Gone
-            var oldestEntry = await dbContext.GibUserChangeLogs
-                .AsNoTracking()
-                .Where(c => c.DocumentType == gibDocType)
-                .OrderBy(c => c.ChangedAt)
-                .Select(c => c.ChangedAt)
-                .FirstOrDefaultAsync(ct);
-
-            if (oldestEntry != default && request.Since < oldestEntry)
-                return null; // API katmanında 410 Gone'a çevrilir
-
             var now = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Unspecified);
+
+            var retentionCutoff = now.AddDays(-endpointOptions.Value.ChangeRetentionDays);
+            if (request.Since < retentionCutoff)
+                return null;
             var effectiveUntil = request.Until.HasValue && request.Until.Value <= now
                 ? request.Until.Value
                 : now;

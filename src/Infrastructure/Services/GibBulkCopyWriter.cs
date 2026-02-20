@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using MERSEL.Services.GibUserList.Application.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Npgsql;

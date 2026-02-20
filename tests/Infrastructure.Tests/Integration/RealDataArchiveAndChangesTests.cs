@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using MERSEL.Services.GibUserList.Application.Configuration;
 using MERSEL.Services.GibUserList.Application.Interfaces;
 using MERSEL.Services.GibUserList.Domain.Entities;
 using MERSEL.Services.GibUserList.Infrastructure.Data;
@@ -117,19 +118,21 @@ public class RealDataArchiveAndChangesTests : IAsyncLifetime
     }
 
     // ──────────────────────────────────────────────────────────────
-    // 3. İlk sync'te tüm kullanıcılar changelog'da "added" olmalı
+    // 3. İlk sync'te changelog yazılmamalı (performans optimizasyonu)
     // ──────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task FirstSync_ShouldCreateAddedChangelogForAllUsers()
+    public async Task FirstSync_ShouldSkipChangelog()
     {
         await _syncService.SyncGibUserListsAsync(CancellationToken.None);
 
         var invoiceCount = await _fixture.DbContext.EInvoiceGibUsers.AsNoTracking().CountAsync();
-        var addedCount = await _fixture.DbContext.GibUserChangeLogs.AsNoTracking()
-            .CountAsync(c => c.DocumentType == GibDocumentType.EInvoice && c.ChangeType == GibChangeType.Added);
+        invoiceCount.Should().BeGreaterThan(0, "Ana tabloda kullanıcılar olmalı");
 
-        addedCount.Should().Be(invoiceCount, "Her kullanıcı için 'added' changelog kaydı olmalı");
+        var changelogCount = await _fixture.DbContext.GibUserChangeLogs.AsNoTracking()
+            .CountAsync(c => c.DocumentType == GibDocumentType.EInvoice);
+
+        changelogCount.Should().Be(0, "İlk sync'te changelog atlanmalı — consumer archive'dan bootstrap yapar");
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -259,11 +262,8 @@ public class RealDataArchiveAndChangesTests : IAsyncLifetime
     [Fact]
     public async Task ConsumerProtocol_Bootstrap_Then_DeltaTracking()
     {
-        // Adım 1: İlk sync → bootstrap verisi hazır
         await _syncService.SyncGibUserListsAsync(CancellationToken.None);
-        var syncTime = DateTime.Now;
 
-        // Adım 2: Tüketici "latest" arşivi indirir → bu, tam kullanıcı listesi
         var latestArchiveFiles = await _archiveStorage.ListAsync("einvoice/", CancellationToken.None);
         latestArchiveFiles.Should().NotBeEmpty("Bootstrap arşivi hazır olmalı");
 
@@ -276,13 +276,14 @@ public class RealDataArchiveAndChangesTests : IAsyncLifetime
         var archiveUserCount = archiveDoc.DocumentElement!.GetElementsByTagName("User").Count;
         archiveUserCount.Should().BeGreaterThan(0, "Arşivde kullanıcılar olmalı");
 
-        // Adım 3: Changelog'dan "since" ile değişiklikleri sorgula
-        var addedCount = await _fixture.DbContext.GibUserChangeLogs.AsNoTracking()
-            .CountAsync(c => c.DocumentType == GibDocumentType.EInvoice
-                && c.ChangeType == GibChangeType.Added
-                && c.ChangedAt <= syncTime);
-        addedCount.Should().Be(archiveUserCount,
-            "Bootstrap'taki kullanıcı sayısı = changelog'daki added sayısı");
+        var changelogCount = await _fixture.DbContext.GibUserChangeLogs.AsNoTracking()
+            .CountAsync(c => c.DocumentType == GibDocumentType.EInvoice);
+        changelogCount.Should().Be(0,
+            "İlk sync changelog atlanır — consumer arşivden bootstrap yapar, sonraki sync'lerdeki delta'ları takip eder");
+
+        var dbUserCount = await _fixture.DbContext.EInvoiceGibUsers.AsNoTracking().CountAsync();
+        dbUserCount.Should().Be(archiveUserCount,
+            "Ana tablo ve arşiv aynı kullanıcı sayısına sahip olmalı");
     }
 
     // ──────────────────────────────────────────────────────────────

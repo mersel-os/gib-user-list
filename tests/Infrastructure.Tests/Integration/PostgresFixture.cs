@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using MERSEL.Services.GibUserList.Application.Configuration;
 using MERSEL.Services.GibUserList.Application.Interfaces;
 using MERSEL.Services.GibUserList.Infrastructure.Data;
 using MERSEL.Services.GibUserList.Infrastructure.Diagnostics;

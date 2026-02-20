@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Npgsql;
 using NSubstitute;
+using MERSEL.Services.GibUserList.Application.Configuration;
 using MERSEL.Services.GibUserList.Application.Interfaces;
 using MERSEL.Services.GibUserList.Domain.Entities;
 using MERSEL.Services.GibUserList.Infrastructure.Diagnostics;
@@ -71,17 +72,11 @@ public class DiffEngineIntegrationTests : IAsyncLifetime
         eInvoiceCount.Should().Be(2);
         eDespatchCount.Should().Be(1);
 
-        // Changelog: 2 e-Invoice added + 1 e-Despatch added
         var invoiceChanges = await GetChangelogEntries(GibDocumentType.EInvoice);
-        invoiceChanges.Should().HaveCount(2);
-        invoiceChanges.Should().OnlyContain(c => c.ChangeType == GibChangeType.Added);
-        invoiceChanges.Select(c => c.Identifier).Should().BeEquivalentTo(["1234567890", "9876543210"]);
+        invoiceChanges.Should().BeEmpty("İlk sync'te changelog atlanır");
 
         var despatchChanges = await GetChangelogEntries(GibDocumentType.EDespatch);
-        despatchChanges.Should().HaveCount(1);
-        despatchChanges[0].Identifier.Should().Be("5555555555");
-        despatchChanges[0].ChangeType.Should().Be(GibChangeType.Added);
-        despatchChanges[0].Title.Should().Be("FIRMA C A.S.");
+        despatchChanges.Should().BeEmpty("İlk sync'te changelog atlanır");
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -97,17 +92,15 @@ public class DiffEngineIntegrationTests : IAsyncLifetime
 
         var syncService = _fixture.CreateSyncService(downloader);
 
-        // İlk sync
         await syncService.SyncGibUserListsAsync(CancellationToken.None);
         var changesAfterFirst = await GetChangelogEntries(GibDocumentType.EInvoice);
-        changesAfterFirst.Should().HaveCount(2, "İlk sync'te 2 added olmalı");
+        changesAfterFirst.Should().BeEmpty("İlk sync'te changelog atlanır");
 
-        // İkinci sync — aynı veri
         await syncService.SyncGibUserListsAsync(CancellationToken.None);
         var changesAfterSecond = await GetChangelogEntries(GibDocumentType.EInvoice);
 
-        changesAfterSecond.Should().HaveCount(2,
-            "Aynı veriyle tekrar sync → yeni changelog kaydı oluşmamalı");
+        changesAfterSecond.Should().BeEmpty(
+            "İlk sync atlandı, ikinci sync aynı veri → changelog hala boş");
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -147,15 +140,11 @@ public class DiffEngineIntegrationTests : IAsyncLifetime
         user.Should().NotBeNull();
         user!.Title.Should().Be("DEGISMIS FIRMA UNVANI");
 
-        // Changelog: 1 added + 1 modified
         var changes = await GetChangelogEntries(GibDocumentType.EInvoice);
-        changes.Should().HaveCount(2);
-        changes.Should().ContainSingle(c => c.ChangeType == GibChangeType.Added);
-        changes.Should().ContainSingle(c => c.ChangeType == GibChangeType.Modified);
-
-        var modifiedEntry = changes.Single(c => c.ChangeType == GibChangeType.Modified);
-        modifiedEntry.Identifier.Should().Be("3333333333");
-        modifiedEntry.Title.Should().Be("DEGISMIS FIRMA UNVANI");
+        changes.Should().ContainSingle("İlk sync atlandı, sadece ikinci sync'teki modified kaydı olmalı");
+        changes[0].ChangeType.Should().Be(GibChangeType.Modified);
+        changes[0].Identifier.Should().Be("3333333333");
+        changes[0].Title.Should().Be("DEGISMIS FIRMA UNVANI");
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -241,16 +230,14 @@ public class DiffEngineIntegrationTests : IAsyncLifetime
         var countAfter = await GetTableCount("e_invoice_gib_users");
         countAfter.Should().Be(4);
 
-        // İkinci sync'teki changelog kayıtları
         var allChanges = await GetChangelogEntries(GibDocumentType.EInvoice);
 
-        // İlk sync'ten 5 added + ikinci sync'ten değişiklikler
-        var firstSyncAdded = allChanges.Where(c => c.ChangeType == GibChangeType.Added).ToList();
+        var added = allChanges.Where(c => c.ChangeType == GibChangeType.Added).ToList();
         var modified = allChanges.Where(c => c.ChangeType == GibChangeType.Modified).ToList();
         var removed = allChanges.Where(c => c.ChangeType == GibChangeType.Removed).ToList();
 
-        // İlk sync: 5 added, ikinci sync: 1 added (5000000006)
-        firstSyncAdded.Should().HaveCount(6, "5 ilk sync + 1 yeni eklenen");
+        added.Should().ContainSingle("İlk sync changelog atlandı, sadece ikinci sync'teki yeni eklenen (5000000006)");
+        added[0].Identifier.Should().Be("5000000006");
         modified.Should().ContainSingle("Sadece 5000000001 değişti");
         modified[0].Identifier.Should().Be("5000000001");
         removed.Should().HaveCount(2);
@@ -443,8 +430,8 @@ public class DiffEngineIntegrationTests : IAsyncLifetime
 
         var invoiceChanges = await GetChangelogEntries(GibDocumentType.EInvoice);
         var despatchChanges = await GetChangelogEntries(GibDocumentType.EDespatch);
-        invoiceChanges.Should().ContainSingle(c => c.ChangeType == GibChangeType.Added && c.Identifier == "1111111111");
-        despatchChanges.Should().ContainSingle(c => c.ChangeType == GibChangeType.Added && c.Identifier == "1111111111");
+        invoiceChanges.Should().BeEmpty("İlk sync'te changelog atlanır");
+        despatchChanges.Should().BeEmpty("İlk sync'te changelog atlanır");
     }
 
     // ──────────────────────────────────────────────────────────────

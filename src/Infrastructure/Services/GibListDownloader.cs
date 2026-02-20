@@ -1,6 +1,7 @@
+using MERSEL.Services.GibUserList.Application.Configuration;
+using MERSEL.Services.GibUserList.Application.Interfaces;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MERSEL.Services.GibUserList.Application.Interfaces;
 
 namespace MERSEL.Services.GibUserList.Infrastructure.Services;
 

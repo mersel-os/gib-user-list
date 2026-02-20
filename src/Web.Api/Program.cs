@@ -4,6 +4,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using OpenTelemetry.Metrics;
 using Scalar.AspNetCore;
 using Serilog;
+using MERSEL.Services.GibUserList.Application.Configuration;
 using MERSEL.Services.GibUserList.Infrastructure;
 using MERSEL.Services.GibUserList.Infrastructure.Caching;
 using MERSEL.Services.GibUserList.Infrastructure.Diagnostics;

@@ -1,4 +1,5 @@
 using System.Data;
+using MERSEL.Services.GibUserList.Application.Configuration;
 using MERSEL.Services.GibUserList.Domain.Entities;
 using MERSEL.Services.GibUserList.Infrastructure.Data;
 using MERSEL.Services.GibUserList.Infrastructure.Diagnostics;

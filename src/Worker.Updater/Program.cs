@@ -1,3 +1,4 @@
+using MERSEL.Services.GibUserList.Application.Configuration;
 using MERSEL.Services.GibUserList.Infrastructure;
 using MERSEL.Services.GibUserList.Infrastructure.Caching;
 using MERSEL.Services.GibUserList.Infrastructure.Services;
